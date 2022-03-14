@@ -15,8 +15,8 @@
 TARGET = eventrouter
 GOTARGET = github.com/openshift/$(TARGET)
 BUILDMNT = /go/src/$(GOTARGET)
-REGISTRY ?= gcr.io/heptio-images
-VERSION ?= v0.2
+REGISTRY ?= gcr.io/traefiklabs/openshift
+VERSION ?= v0.2.2
 IMAGE = $(REGISTRY)/$(BIN)
 BUILD_IMAGE ?= gcr.io/heptio-images/golang:1.9-alpine3.6
 DOCKER ?= docker
@@ -29,25 +29,15 @@ TESTARGS ?= $(VERBOSE_FLAG) -timeout 60s
 TEST_PKGS ?= $(GOTARGET)/sinks/...
 TEST = go test $(TEST_PKGS) $(TESTARGS)
 
-DOCKER_BUILD ?= $(DOCKER) run --rm -v $(DIR):$(BUILDMNT) -w $(BUILDMNT) $(BUILD_IMAGE) /bin/sh -c
-
 all: container
 
 container:
-	$(DOCKER_BUILD) 'go build'
-	$(DOCKER) build -t $(REGISTRY)/$(TARGET):latest -t $(REGISTRY)/$(TARGET):$(VERSION) .
-
-push:
-	$(DOCKER) push $(REGISTRY)/$(TARGET):latest
-	if git describe --tags --exact-match >/dev/null 2>&1; \
-	then \
-		$(DOCKER) push $(REGISTRY)/$(TARGET):$(VERSION); \
-	fi
+	$(DOCKER) buildx build --push --platform=linux/amd64,linux/arm64 -t $(REGISTRY)/$(TARGET):latest -t $(REGISTRY)/$(TARGET):$(VERSION) .
 
 test:
 	$(DOCKER_BUILD) '$(TEST)'
 
-.PHONY: all local container push
+.PHONY: all local container
 
 clean:
 	rm -f $(TARGET)
